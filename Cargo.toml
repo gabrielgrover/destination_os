@@ -1,0 +1,5 @@
+[workspace]
+
+members = ["data_miner"]
+
+resolver = "2"

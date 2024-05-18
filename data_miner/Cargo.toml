@@ -1,0 +1,12 @@
+[package]
+name = "data_miner"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+reqwest = { version = "0.12.4", default-features = false, features = ["rustls-tls", "json"] }
+scraper = "0.19.0"
+tokio = { version = "1.37.0", features = ["full"] }
+chromiumoxide = { git = "https://github.com/mattsse/chromiumoxide", features = ["tokio-runtime"], default-features = false, branch = "main"}
+futures-util = "0.3.30"
+itertools = "0.13.0"
