@@ -10,3 +10,5 @@ tokio = { version = "1.37.0", features = ["full"] }
 chromiumoxide = { git = "https://github.com/mattsse/chromiumoxide", features = ["tokio-runtime"], default-features = false, branch = "main"}
 futures-util = "0.3.30"
 itertools = "0.13.0"
+kv = "0.24.0"
+async-trait = "0.1.80"
