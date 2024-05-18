@@ -1,7 +1,7 @@
 use std::{collections::HashSet, error::Error};
 
 use futures_util::{future::try_join_all, FutureExt};
-use itertools::Itertools;
+use itertools::*;
 use scraper::selectable::Selectable;
 
 #[tokio::main]
@@ -106,7 +106,8 @@ async fn get_post_urls() -> Result<Vec<Vec<String>>, Box<dyn Error>> {
 
         for a_tag in element.select(&a_selector) {
             if let Some(url) = a_tag.attr("href") {
-                urls_set.insert(format!("{}", url).replace("\\", ""));
+                let clean_url = url.replace("\\", "").trim_matches('"').to_string();
+                urls_set.insert(clean_url);
             }
         }
     }
@@ -114,7 +115,7 @@ async fn get_post_urls() -> Result<Vec<Vec<String>>, Box<dyn Error>> {
     let urls: Vec<_> = urls_set.into_iter().collect();
     let chunked_urls: Vec<_> = urls
         .into_iter()
-        .chunks(1)
+        .chunks(100)
         .into_iter()
         .map(|c| c.collect())
         .collect();
