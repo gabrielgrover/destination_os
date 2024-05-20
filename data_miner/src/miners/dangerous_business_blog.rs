@@ -21,7 +21,10 @@ impl DangerousBusinessBlog {
 #[async_trait::async_trait]
 impl DataMiner for DangerousBusinessBlog {
     async fn mine(&self) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
-        dangerous_business_scrape().await
+        let content = dangerous_business_scrape().await?;
+        println!("{} content size {} bytes", self.name, content.len());
+
+        Ok(content)
     }
 
     fn name(&self) -> String {
@@ -32,10 +35,7 @@ impl DataMiner for DangerousBusinessBlog {
 async fn dangerous_business_scrape() -> Result<Vec<u8>, Box<dyn Error>> {
     let urls = get_post_urls().await?;
     let all_blogs = get_all_blog_content(urls).await?;
-    println!("all blogs: {}", all_blogs);
     let bytes: Vec<u8> = all_blogs.into();
-
-    println!("content size {} bytes", bytes.len());
 
     Ok(bytes)
 }

@@ -34,3 +34,7 @@ async fn main() {
         bucket.set(&miner_name, &data).unwrap();
     }
 }
+
+fn store_yields(yields: Vec<(String, Vec<u8>)>) {
+    //
+}
