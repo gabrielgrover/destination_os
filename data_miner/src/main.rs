@@ -1,22 +1,13 @@
 use data_miner::miners;
+use dotenvy::dotenv;
 use futures_util::{future::try_join_all, FutureExt};
-use kv::{Config, Store};
+use serde::{Deserialize, Serialize};
+use std::{env, io::Write, path::PathBuf};
 
 #[tokio::main]
 async fn main() {
-    let config = Config::new("./mined_data/yields");
-    let store = Store::new(config).unwrap();
-    let bucket = store
-        .bucket::<String, Vec<u8>>(Some("mining_yields_0"))
-        .unwrap();
-
-    // let data = bucket
-    //     .get(&"dangerous_business_blog".to_string())
-    //     .unwrap()
-    //     .unwrap();
-
-    // println!("{:?}", std::str::from_utf8(&data).unwrap());
-
+    dotenv().expect(".env file not found.");
+    let base_store_path = env::var("STORE_PATH").expect("STORE_PATH env var not fount.");
     let data_miners = miners();
     let mining_yields = try_join_all(
         data_miners
@@ -30,11 +21,34 @@ async fn main() {
     .await
     .unwrap();
 
-    for (miner_name, data) in mining_yields.into_iter() {
-        bucket.set(&miner_name, &data).unwrap();
+    for mining_yield in mining_yields.into_iter() {
+        let path = PathBuf::from(&base_store_path);
+        store_yield(mining_yield, path).expect("Failed to store mining yield");
     }
 }
 
-fn store_yields(yields: Vec<(String, Vec<u8>)>) {
-    //
+#[derive(Debug, Clone, Deserialize, Serialize)]
+struct MiningYield {
+    pub name: String,
+    pub data: Vec<u8>,
+}
+
+fn store_yield(y: (String, Vec<u8>), mut base_path: PathBuf) -> anyhow::Result<()> {
+    let m = MiningYield {
+        name: y.0,
+        data: y.1,
+    };
+    base_path.push(format!("{}.json", &m.name));
+
+    let data_str = serde_json::to_vec(&m)?;
+    let mut doc_file = std::fs::OpenOptions::new()
+        .read(true)
+        .write(true)
+        .create(true)
+        .open(base_path)?;
+
+    doc_file.write_all(&data_str)?;
+    doc_file.flush()?;
+
+    Ok(())
 }

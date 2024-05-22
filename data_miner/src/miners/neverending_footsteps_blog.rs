@@ -1,3 +1,4 @@
+use itertools::*;
 use std::error::Error;
 
 use crate::DataMiner;
@@ -41,15 +42,36 @@ async fn neverending_footsteps_scrape() -> Result<Vec<u8>, Box<dyn Error>> {
     .await?;
     let handle = tokio::task::spawn(async move {
         loop {
-            let _ = handler.next().await.unwrap();
+            if let Some(_) = handler.next().await {
+                continue;
+            }
+
+            break;
         }
     });
 
     let urls = get_post_urls(&browser).await?;
-    let all_blog_content = get_all_blog_content(urls, &browser).await?;
+    let chunked_urls: Vec<Vec<String>> = urls
+        .into_iter()
+        .chunks(100)
+        .into_iter()
+        .map(|c| c.collect())
+        .collect();
 
-    handle.await?;
+    let mut all_blog_content = vec![];
+
+    for chunk in chunked_urls.into_iter() {
+        println!("Scraping chunk...");
+        let content_collection = get_all_blog_content(chunk, &browser).await?;
+        println!("Chunk scrape succesful");
+
+        for content in content_collection.into_iter() {
+            all_blog_content.push(content);
+        }
+    }
+
     browser.close().await?;
+    handle.await?;
 
     Ok(all_blog_content)
 }
@@ -85,23 +107,33 @@ async fn get_all_blog_content(
     let mut tasks = vec![];
 
     for page in pages.iter() {
+        let page_url = page.url().await?.unwrap();
+
         let task = page
             .find_element("div.vw-post-content")
-            .then(|maybe_div| async {
+            .then(|maybe_div| async move {
                 let maybe_p_tags = match maybe_div {
                     Ok(div) => div.find_elements("p").await,
                     Err(e) => Err(e),
                 };
 
+                println!("Scraping: {}", page_url);
+
                 match maybe_p_tags {
                     Ok(p_tags) => try_join_all(p_tags.into_iter().map(|p_tag| async move {
-                        p_tag
-                            .inner_text()
-                            .await?
-                            .ok_or(anyhow!("No inner text found in p tag."))
+                        if let Some(text) = p_tag.inner_text().await? {
+                            Ok(text)
+                        } else {
+                            Ok(String::new())
+                        }
                     }))
                     .await
-                    .map(|p_tag_texts| p_tag_texts.join(" ")),
+                    .map(|p_tag_texts| {
+                        if p_tag_texts.is_empty() {
+                            println!("No content found for url: {}", page_url)
+                        }
+                        p_tag_texts.join(" ")
+                    }),
 
                     Err(e) => Err(anyhow!(e.to_string())),
                 }

@@ -1,2 +1,4 @@
 /target
 /mined_data
+.env
+.DS_Store
